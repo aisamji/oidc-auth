@@ -3,6 +3,7 @@ import logging
 from configparser import ConfigParser
 import json
 from urllib import parse as urlparse
+from collections import defaultdict
 import requests
 
 LOGGER = logging.Logger(__name__)
@@ -103,6 +104,62 @@ class _Provider:
     @property
     def token_endpoint(self):
         return self.openid_configuration['token_endpoint']
+
+    @property
+    def plugins(self):
+        plugins_line = self._get_key('plugins')
+        if plugins_line:
+            plugins = plugins_line.split(',')
+        else:
+            plugins = []
+        return _PluginList(self,
+                           {
+                               p.strip(): _Plugin(self, p.strip())
+                               for p in plugins
+                           },
+                           )
+
+    def add_plugin(self, name):
+        plugins = list(self.plugins.keys())
+        plugins.append(name)
+        plugins = set(plugins)
+        self._set_key('plugins', ','.join(plugins))
+
+
+class _PluginList(dict):
+
+    def __init__(self, provider, *args, **kwargs):
+        self._provider = provider
+        super().__init__(*args, **kwargs)
+
+    def __missing__(self, key):
+        res = self[key] = _Plugin(self._provider, key)
+        return res
+
+
+class _Plugin:
+
+    def __init__(self, provider, name):
+        self._provider = provider
+        self._prefix = f'{name}_'
+
+    @property
+    def options(self):
+        options = {
+            k.removeprefix(self._prefix): v
+            for k, v in self._provider._section.items()
+            if k.startswith(self._prefix)
+        }
+        return options
+
+    @options.setter
+    def options(self, value):
+        if type(value) != dict:
+            raise TypeError('options must be a dictionary of the options.')
+
+        for k, v in value.items():
+            config_key = k if k.startswith(self._prefix) else f'{self._prefix}{k}'
+            self._provider._set_key(config_key, v)
 
 
 class _JsonWebKey:

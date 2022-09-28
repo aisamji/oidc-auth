@@ -13,7 +13,6 @@ setup(
     entry_points={
         'console_scripts': [
             'oidc-auth=oidc_auth.cli:main',
-            'oidc-auth-server=oidc_auth.server.main:main',
         ]
     }
 )
