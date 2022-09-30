@@ -9,6 +9,7 @@ def main(namespace, _):
     token = credentials.get_token(namespace.provider_alias)
     if not token:
         login(namespace, _)
+        token = credentials.get_token(namespace.provider_alias)
 
     # The token would already have been verified by this point.
     if namespace.decoded:

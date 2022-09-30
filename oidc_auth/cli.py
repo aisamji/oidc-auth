@@ -74,4 +74,11 @@ def create_parser():
     )
     id_token_command.set_defaults(func=commands.id_token)
 
+    # Env Command
+    env_command = command_parsers.add_parser(
+        'env',
+        parents=[global_parser]
+    )
+    env_command.set_defaults(func=commands.env)
+
     return parser

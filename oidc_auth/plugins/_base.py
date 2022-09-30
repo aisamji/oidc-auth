@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 from abc import ABC, abstractmethod
 
 
@@ -5,6 +7,10 @@ class Plugin(ABC):
 
     def __init__(self):
         pass
+
+    def __del__(self):
+        if hasattr(self, '_tempdir'):
+            shutil.rmtree(self._tempdir)
 
     @property
     def name(self):
@@ -15,11 +21,6 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def prepare_environment(self, id_token, options):
-        '''Prepares the Python environment prior to running a sub-shell.'''
-        pass
-
-    @abstractmethod
     def get_options_config(self):
         '''Gets a list of tuples describing the plugin options to set.
 
@@ -27,5 +28,20 @@ class Plugin(ABC):
         will be used to generate the question shown to the usaer during configuration.
         '''
         pass
-# TODO: Hook functions for writing and retrieving properties from providers file.
-# TODO: Function to get script that configures the caller's environment.
+
+    def prepare_environment(self, id_token, options):
+        '''Prepares the Python environment prior to running a sub-shell.'''
+        if hasattr(self, '_tempdir'):
+            shutil.rmtree(self._tempdir)
+        self._tempdir = tempfile.mkdtemp()
+        actions = self._get_actions(id_token, options, self._tempdir)
+        actions.execute()
+
+    def print_actions(self, id_token, options):
+        actions = self._get_actions(id_token, options, '.')
+        actions.print()
+
+    @abstractmethod
+    def _get_actions(self, id_token, options, directory):
+        '''Get a list of Instruction objects specifying how to configure the environment.'''
+        pass
