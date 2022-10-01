@@ -8,7 +8,6 @@ setup(
     setup_requires=['flake8'],
     install_requires=[
         'requests==2.28.1',
-        'Flask==2.2.2',
         ],
     entry_points={
         'console_scripts': [

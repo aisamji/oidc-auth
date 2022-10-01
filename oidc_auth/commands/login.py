@@ -1,17 +1,16 @@
 import webbrowser
 from urllib import parse as urlparse
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Pipe
 import json
 import requests
 import logging
-from logging.config import dictConfig
 import random
 from .. import config, database
-from . import _callback
+from . import _server
 
 LOGGER = logging.Logger(__name__)
 
-CHARACTERS ='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'
+CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'
 
 
 def main(namespace, _):
@@ -22,14 +21,11 @@ def main(namespace, _):
 
     provider = config.provider(namespace.provider_alias)
     auth_request_uri, state = craft_request_uri(provider)
-    queue = Queue()
-    p = Process(target=_callback_server, args=(provider, state, queue))
+    conn, child_conn = Pipe()
+    p = Process(target=_server.callback, args=(child_conn, state))
     p.start()
     webbrowser.open(auth_request_uri)
-    while input():
-        pass
-    p.terminate()
-    code = queue.get()
+    code = conn.recv()
     id_token = get_id_token(provider, code)
     credentials.save_token(namespace.provider_alias, id_token)
 
@@ -45,28 +41,6 @@ def craft_request_uri(provider):
         'scope': 'openid',
     })
     return f'{endpoint}?{query}', random_state
-
-
-def _callback_server(provider, state, queue):
-    dictConfig({
-        'version': 1,
-        'formatters': {'default': {
-            'format': '',
-        }},
-        'handlers': {'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': _callback.devnull,
-            'formatter': 'default'
-        }},
-        'root': {
-            'level': 'INFO',
-            'handlers': ['wsgi']
-        },
-    })
-    _callback.state = state
-    _callback.token_endpoint = provider.token_endpoint
-    _callback.queue = queue
-    _callback.app.run(port=9527)
 
 
 def get_id_token(provider, code):
