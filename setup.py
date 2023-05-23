@@ -7,7 +7,7 @@ setup(
     tests_require=['pytest'],
     setup_requires=['flake8'],
     install_requires=[
-        'requests==2.28.1',
+        'requests==2.31.0',
         'Flask==2.2.2',
         ],
     entry_points={
